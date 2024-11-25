@@ -150,9 +150,9 @@ typedef enum _subseawireless_Parameter_identifier {
 /* Struct definitions */
 typedef struct _subseawireless_Parameter {
     subseawireless_Parameter_identifier id;
-    bool bool_t;
-    int32_t integer_t;
-    pb_callback_t string_t;
+    bool boolean;
+    int32_t integer;
+    pb_callback_t string;
 } subseawireless_Parameter;
 
 typedef struct _subseawireless_Message {
@@ -185,9 +185,9 @@ extern "C" {
 
 /* Field tags (for use in manual encoding/decoding) */
 #define subseawireless_Parameter_id_tag          1
-#define subseawireless_Parameter_bool_t_tag      2
-#define subseawireless_Parameter_integer_t_tag   3
-#define subseawireless_Parameter_string_t_tag    32
+#define subseawireless_Parameter_boolean_tag     2
+#define subseawireless_Parameter_integer_tag     3
+#define subseawireless_Parameter_string_tag      32
 #define subseawireless_Message_source_tag        1
 #define subseawireless_Message_target_tag        2
 #define subseawireless_Message_requests_tag      3
@@ -197,9 +197,9 @@ extern "C" {
 /* Struct field encoding specification for nanopb */
 #define subseawireless_Parameter_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    id,                1) \
-X(a, STATIC,   SINGULAR, BOOL,     bool_t,            2) \
-X(a, STATIC,   SINGULAR, INT32,    integer_t,         3) \
-X(a, CALLBACK, SINGULAR, STRING,   string_t,         32)
+X(a, STATIC,   SINGULAR, BOOL,     boolean,           2) \
+X(a, STATIC,   SINGULAR, INT32,    integer,           3) \
+X(a, CALLBACK, SINGULAR, STRING,   string,           32)
 #define subseawireless_Parameter_CALLBACK pb_default_field_callback
 #define subseawireless_Parameter_DEFAULT NULL
 
