@@ -64,22 +64,23 @@ void encode_swig_response(pb_ostream_t *pbbuffer) {
 }
 
 bool decode_parameter(pb_istream_t *stream, const pb_field_iter_t *field, void **arg) {
-  subseawireless_Parameter parameter = subseawireless_Parameter_init_default;
   bool eof = false;
   pb_wire_type_t wiretype;
   uint32_t tag;
-  if (!pb_decode_tag(stream, &wiretype, &tag, &eof)) {
-    return false;
-  }
-  Serial.printf("got wiretype %i, tag %i\n",wiretype, tag);
-  bool success = pb_decode(stream, subseawireless_Parameter_fields, &parameter);
+  //if (!pb_decode_tag(stream, &wiretype, &tag, &eof)) {
+  //  return false;
+  //}
+  
+  Serial.printf("got wiretype %i, tag %i, bytes left %i\n",wiretype, tag, stream->bytes_left);
+
+  bool success = pb_decode(stream, subseawireless_Parameter_fields, *arg);
   if (!success)
   {
       const char * error = PB_GET_ERROR(stream);
       Serial.printf("pb_decode error: %s\n", error);
       return false;
   }
-  Serial.printf("Received parameter %i\n", parameter.id);
+  //Serial.printf("Received parameter %i\n", parameter.id);
   return success;
 }
 
@@ -89,22 +90,6 @@ bool decode_swig_message(pb_istream_t *pbbuffer_in, subseawireless_Message *mess
   pb_decode(pbbuffer_in, subseawireless_Message_fields, message);
 }
 
-/** handler for received serial packets (COBS callback)*/
-void onPacketReceived(const uint8_t* buffer, size_t size)
-{
-  subseawireless_Message message = subseawireless_Message_init_default;
-  bool success = false;
-  flash_LED(0,255,0);
-  pb_istream_t pbbuffer_in = pb_istream_from_buffer(buffer, size);
-  // decode SWiG
-  success = success && decode_swig_message(&pbbuffer_in, &message);
-  if (!success) return;
-  // send response
-  pb_ostream_t pbbuffer = pb_ostream_from_buffer(sMsg, sizeof(sMsg));
-  encode_swig_response(&pbbuffer);
-  cobs.send(sMsg, pbbuffer.bytes_written); 
-
-}
 
 /** handler for received UDP packets*/
 void udp_update() {
@@ -125,9 +110,10 @@ void udp_update() {
       success = true;
       // decode packet
       uint8_t in_buffer[MSG_SIZE];
-      size_t msg_size = cobs_coder.decode(cobs_buffer, size, in_buffer);
-      Serial.printf("received COBS message: raw size %i, decoded size %i\n", len, msg_size);
-      pb_istream_t pbbuffer_in = pb_istream_from_buffer(in_buffer, msg_size);
+      //size_t msg_size = cobs_coder.decode(cobs_buffer, len, in_buffer);
+      //Serial.printf("received COBS message: raw size %i, decoded size %i\n", len, msg_size);
+      //pb_istream_t pbbuffer_in = pb_istream_from_buffer(in_buffer, msg_size);
+      pb_istream_t pbbuffer_in = pb_istream_from_buffer(cobs_buffer, len);
       // decode SWiG
       message.requests.funcs.decode = &decode_parameter;
       message.requests.arg = &parameter;
@@ -138,7 +124,7 @@ void udp_update() {
       pb_decode(&pbbuffer_in, subseawireless_Message_fields, &message);
 
       //success = success && decode_swig_message(&pbbuffer_in, &message);
-      Serial.printf("SWiG message from %i \n", message.source);
+      Serial.printf("SWiG message from %i to %i\n", message.source, message.target);
     }
     udp.flush();
 
@@ -147,14 +133,34 @@ void udp_update() {
     // send response back to sender
     pb_ostream_t pbbuffer = pb_ostream_from_buffer(sMsg, sizeof(sMsg));
     encode_swig_response(&pbbuffer);
-    size_t cobs_size = cobs_coder.encode(sMsg, pbbuffer.bytes_written, cobs_buffer);
-    // add 0 as delimiter 
-    cobs_size++;
+    //size_t cobs_size = cobs_coder.encode(sMsg, pbbuffer.bytes_written, cobs_buffer);
+    // add 0 as delimiter
+    //cobs_size++;
     udp.beginPacket(remote, 55501);
-    udp.write(cobs_buffer,cobs_size);
+    //udp.write(cobs_buffer,cobs_size);
+    udp.write(sMsg,pbbuffer.bytes_written);
     udp.endPacket();
-    Serial.printf("Sent response, %i bytes\n", cobs_size);
+    //Serial.printf("Sent response, %i bytes\n", cobs_size);
+    Serial.printf("Sent response, %i bytes\n", pbbuffer.bytes_written);
   }
+}
+
+
+/** handler for received serial packets (COBS callback)*/
+void onPacketReceived(const uint8_t* buffer, size_t size)
+{
+  subseawireless_Message message = subseawireless_Message_init_default;
+  bool success = false;
+  flash_LED(0,255,0);
+  pb_istream_t pbbuffer_in = pb_istream_from_buffer(buffer, size);
+  // decode SWiG
+  success = success && decode_swig_message(&pbbuffer_in, &message);
+  if (!success) return;
+  // send response
+  pb_ostream_t pbbuffer = pb_ostream_from_buffer(sMsg, sizeof(sMsg));
+  encode_swig_response(&pbbuffer);
+  cobs.send(sMsg, pbbuffer.bytes_written); 
+
 }
 
 // Connect to Wifi
